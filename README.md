@@ -1,12 +1,14 @@
 # PROHEAT Accounting Entry
 
-**État : première implémentation en développement, non prête pour des données réelles.** Les règles comptables, les écritures, l'approbation, les exports, la gestion des utilisateurs et les sauvegardes restaurables ne sont pas encore implémentés. Ne pas utiliser pour une comptabilité réelle. Voir [l'état détaillé](docs/DEVELOPMENT_PROGRESS.md).
+**État : première implémentation en développement, non prête pour des données réelles.** Les règles comptables, les écritures, l'approbation, les exports comptables validés, la gestion des utilisateurs et les sauvegardes restaurables ne sont pas encore implémentés. Ne pas utiliser pour une comptabilité réelle. Voir [l'état détaillé](docs/DEVELOPMENT_PROGRESS.md).
+
+Le traitement par lots fournit désormais un export XLSX des **données extraites** avec trois onglets (`FACTURES`, `LIGNES`, `ANOMALIES`), même lorsque des anomalies restent à vérifier. Cet export ne contient aucune écriture comptable validée. Les doublons y sont indiqués sans supprimer les données extraites. Pour les anciens lots dont l'affichage contient des champs vides, télécharger le nouveau fichier ou utiliser « Retraiter ce lot » pour actualiser l'affichage dans un nouveau lot.
 
 ## Démarrage prévu sous Windows
 
 1. Démarrer Docker Desktop avec les conteneurs Linux.
 2. Dans PowerShell, ouvrir ce dossier et exécuter `./run.ps1`.
-3. Ouvrir http://localhost:8080 si le navigateur ne s'ouvre pas. Créer le premier administrateur avec un mot de passe d'au moins 8 caractères, puis se connecter.
+3. Ouvrir http://localhost:8081 si le navigateur ne s'ouvre pas. Créer le premier administrateur avec un mot de passe d'au moins 8 caractères, puis se connecter.
 4. Importer uniquement une facture fictive PDF, JPG ou PNG. Vérifier les champs et l'arithmétique ; les corrections et rejets sont enregistrés.
 5. Pour arrêter : `./stop.ps1`. Les volumes Docker persistent après l'arrêt. Ne pas utiliser `docker compose down -v` : cela supprime les volumes.
 

@@ -287,7 +287,7 @@ def get_batch(batch_id: str, account: User = Depends(user), session: Session = D
     for item in items:
         doc = session.get(Document, item.document_id) if item.document_id else None
         fields = json.loads(doc.fields_json) if doc else {}
-        result.append({'id':item.id, 'name':item.name, 'status':item.status, 'document_id':item.document_id, 'supplier':fields.get('supplier', {}).get('value'), 'invoice_number':fields.get('invoice_number', {}).get('value'), 'amount_ht':fields.get('amount_ht', {}).get('value'), 'vat_amount':fields.get('vat_amount', {}).get('value'), 'amount_ttc':fields.get('amount_ttc', {}).get('value'), 'issues':json.loads(item.issues_json)})
+        result.append({'id':item.id, 'name':item.name, 'status':item.status, 'document_id':item.document_id, 'supplier':fields.get('supplier', {}).get('value'), 'invoice_number':fields.get('invoice_number', {}).get('value'), 'amount_ht':fields.get('amount_ht', {}).get('value'), 'vat_amount':fields.get('vat_amount', {}).get('value'), 'amount_ttc':fields.get('amount_ttc', {}).get('value'), 'fields':fields, 'totals':validate_totals(fields), 'issues':json.loads(item.issues_json)})
     return {'id':batch.id, 'items':result, 'total':len(items), 'processed':sum(i.status != 'queued' for i in items), 'review':sum(i.status == 'review' for i in items), 'failed':sum(i.status == 'failed' for i in items), 'validated':0}
 
 @app.get('/api/batches/{batch_id}/exceptions.xlsx')
@@ -298,6 +298,25 @@ def batch_exceptions(batch_id: str, account: User = Depends(user), session: Sess
     content = build_exception_report(result['items'])
     audit(session, account.username, 'export_anomalies', batch_id); session.commit()
     return Response(content, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition':'attachment; filename="anomalies.xlsx"', 'X-Content-Type-Options':'nosniff'})
+
+@app.get('/api/batches/{batch_id}/invoice-data.xlsx')
+def batch_invoice_data(batch_id: str, account: User = Depends(user), session: Session = Depends(db)):
+    from invoice_workbook import build_invoice_workbook
+    result = get_batch(batch_id, account, session)
+    if result['processed'] != result['total']: raise HTTPException(409, 'Le lot est encore en cours de traitement.')
+    # Earlier batches may point duplicates at an older document whose fields were
+    # empty. Re-extract from this batch item's own preserved file for the report.
+    for item in result['items']:
+        try:
+            _, fields = extract_document((UPLOAD_DIR / item['id']).read_bytes())
+            item['fields'] = fields
+            item['totals'] = validate_totals(fields)
+            item['issues'] = assess(fields)['issues'] + [issue for issue in item['issues'] if issue.get('code') == 'duplicate_file']
+        except Exception:
+            item['issues'].append({'code':'report_extraction_failed','severity':'critical','explanation':'Extraction impossible lors de la création du fichier Excel.'})
+    content = build_invoice_workbook(result['items'])
+    audit(session, account.username, 'export_donnees_factures', batch_id); session.commit()
+    return Response(content, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition':'attachment; filename="donnees_factures.xlsx"', 'X-Content-Type-Options':'nosniff'})
 
 @app.get('/api/documents')
 def documents(account: User = Depends(user), session: Session = Depends(db)):

@@ -17,6 +17,6 @@ docker compose up -d --build
 if ($LASTEXITCODE -ne 0) { throw 'Le démarrage Docker a échoué. Consultez les messages ci-dessus.' }
 Write-Host 'Attente du service...'
 for ($i = 0; $i -lt 60; $i++) {
-    try { $response = Invoke-WebRequest -Uri 'http://localhost:8080/api/setup-status' -UseBasicParsing -TimeoutSec 2; if ($response.StatusCode -eq 200) { Write-Host 'Application disponible : http://localhost:8080'; Start-Process 'http://localhost:8080'; exit 0 } } catch { Start-Sleep -Seconds 2 }
+    try { $response = Invoke-WebRequest -Uri 'http://localhost:8081/api/setup-status' -UseBasicParsing -TimeoutSec 2; if ($response.StatusCode -eq 200) { Write-Host 'Application disponible : http://localhost:8081'; Start-Process 'http://localhost:8081'; exit 0 } } catch { Start-Sleep -Seconds 2 }
 }
 throw 'Le service ne répond pas. Exécutez docker compose logs app pour diagnostiquer.'

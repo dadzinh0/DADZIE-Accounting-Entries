@@ -1,5 +1,13 @@
 # État du développement — 16 novembre 2026
 
+## 21 novembre 2026 — export des données de factures
+
+Le besoin utilisateur est un Excel détaillé après import, y compris lorsque des écritures comptables ne sont pas validées. Ajout de `backend/invoice_workbook.py` et de `/api/batches/{id}/invoice-data.xlsx`. Le classeur contient `FACTURES` (une ligne par fichier, champs extraits, contrôle des montants, état d'extraction et indicateur de doublon), `LIGNES` (articles détectés) et `ANOMALIES` (champs absents et incohérences). Les montants sont des cellules numériques et les dates sont typées/formattées. Le fichier est rouvert pour contrôler ses valeurs, le nombre de lignes, ses onglets et l'absence de formules. L'export est disponible même si des exceptions subsistent. Il ne constitue pas un journal comptable validé.
+
+L'extraction a été adaptée à la mise en page réelle des cinq PDF **fictifs** déjà présents dans le stockage local : fournisseur/ICE sous en-tête, référence et dates en tableau, montant HT/TVA sur la ligne suivante, lignes d'articles, ainsi que la disposition OCR du scan. L'endpoint d'export réextrait à partir de chaque fichier conservé, y compris pour les anciens lots dont les champs liés aux doublons étaient vides. Le tableau d'un ancien lot reste basé sur les champs enregistrés ; le bouton « Retraiter ce lot » le met à jour via un nouveau lot sans effacer l'historique.
+
+Vérifications exécutées : 17 tests dans l'image Docker, tous réussis. Un classeur réel a été généré et rouvert à partir des cinq PDF fictifs : 5 factures, 7 lignes, 2 anomalies (`04_reference_manquante.pdf`, `05_scan_total_incorrect.pdf`). L'extraction ne remplit pas la référence volontairement absente et ne corrige pas le total incohérent. Aucun taux de TVA ni compte comptable n'a été inféré. Le classeur généré est dans `outputs/proheat-fictional-invoice-details.xlsx` et n'est pas suivi par Git.
+
 ## 21 novembre 2026 — formulaire d'import unifié
 
 Le formulaire « Importer des documents » utilisait encore `/api/documents`, qui renvoie HTTP 409 sur un hash déjà connu. Ses cinq messages « Fichier identique déjà importé » provenaient de ce chemin, et non du traitement par lots. L'entrée de navigation et le bouton du tableau de bord ouvrent désormais « Traitement par lots » ; l'ancien formulaire a été retiré de l'interface. Les fichiers déjà présents peuvent être soumis dans un nouveau lot : ils sont extraits et signalés avec leur référence d'origine dans les exceptions. Le point d'API historique `/api/documents` garde son comportement 409 pour les clients directs.
