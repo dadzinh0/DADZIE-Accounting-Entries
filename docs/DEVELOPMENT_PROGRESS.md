@@ -121,3 +121,10 @@ Les sources officielles ont été identifiées, mais l'analyse des textes consol
 5. Compléter et faire valider les recherches réglementaires ; concevoir règles versionnées et comptes configurables, sans activer les cas non vérifiés.
 6. Implémenter lignes équilibrées, approbation humaine, modèles d'export XLSX/CSV, protection contre injection et historique, puis couvrir l'acceptation de bout en bout.
 7. Finaliser la gestion utilisateurs/fournisseurs, paramètres, documentation française et tests navigateur/accessibilité. Exécuter et consigner chaque critère d'acceptation.
+## 21 novembre 2026 — extraction PDF fondée sur la disposition
+
+Le traitement PDF commun aux imports directs et par lots conserve maintenant les positions des mots pour lire les totaux et les lignes d'articles, même lorsque l'ordre du texte du PDF suit les colonnes. Il lit aussi les images d'en-tête par OCR local pour proposer un nom de fournisseur visible uniquement dans un logo. Ce nom porte l'origine `ocr_uncertain` et déclenche une annotation rouge sur la cellule fournisseur du classeur. Lorsque l'ICE du client et celui de l'émetteur sont présents, l'ICE voisin des identifiants RC/IF de l'émetteur est choisi. Les dates courtes sont normalisées et les montants restent vérifiés arithmétiquement.
+
+Le PDF réel fourni par l'utilisateur a servi uniquement de vérification locale ; il n'est ni copié dans le dépôt ni ajouté aux tests. Sur cet exemple, 17 lignes ont été extraites, leur somme HT correspond au total HT et les montants HT + TVA = TTC. L'OCR du logo laisse une orthographe incertaine dans le nom du fournisseur : cette valeur est à vérifier dans Excel. Un PDF seul ne constitue pas un entraînement universel ; les autres mises en page et scans nécessitent encore des essais et des tests avec des factures fictives. L'extraction ne garantit pas tous les champs de toutes les factures.
+
+Tests : 20 tests unitaires réussis dans l'image Docker existante. Le test synthétique couvre logo OCR, deux ICE, date courte et totaux disposés en colonnes. Les volumes PostgreSQL et documents ne sont pas modifiés par ces tests.

@@ -25,6 +25,7 @@ def _targets(issue):
     if code.startswith('totals_'):
         return ('I', 'J', 'K', 'L'), 'critical'
     if code == 'unsupported_currency': return ('H',), 'warning'
+    if code == 'uncertain_supplier': return ('C',), 'warning'
     if code in ('processing_failed', 'report_extraction_failed'): return ('A', 'M'), 'critical'
     if code == 'unverified_rule': return (), 'warning'
     return ('M',), 'warning'

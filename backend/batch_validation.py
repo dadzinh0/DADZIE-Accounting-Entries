@@ -11,6 +11,8 @@ def assess(fields, known_references=()):
         return str(item.get('value') or '').strip()
     for key in ('supplier', 'invoice_number', 'invoice_date', 'currency', 'amount_ht', 'vat_amount', 'amount_ttc'):
         if not value(key): issue('missing_' + key, 'Champ obligatoire absent : ' + key)
+    if (fields.get('supplier') or {}).get('origin') == 'ocr_uncertain':
+        issue('uncertain_supplier', 'Nom du fournisseur lu dans le logo par OCR : vérifier l’orthographe.')
     totals = validate_totals(fields)
     if totals != 'consistent': issue('totals_' + totals, 'Les montants ne sont pas vérifiés ou sont incohérents.')
     if value('currency') and value('currency').upper() != 'MAD':

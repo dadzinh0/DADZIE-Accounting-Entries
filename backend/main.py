@@ -23,6 +23,7 @@ from sqlalchemy import create_engine, String, Text, DateTime, ForeignKey, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 from starlette.middleware.sessions import SessionMiddleware
 from extraction import extract, validate_totals
+from layout_extraction import extract_pdf
 from batch_validation import assess
 
 DATABASE_URL = os.environ['DATABASE_URL']
@@ -170,13 +171,7 @@ def extract_document(data):
         media = 'application/pdf'
         with fitz.open(stream=data, filetype='pdf') as pdf:
             if pdf.page_count > 20: raise ValueError('Trop de pages')
-            for page in pdf:
-                page_text = page.get_text()[:100000]
-                if not page_text.strip():
-                    pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
-                    if pix.width * pix.height > 20_000_000: raise ValueError('Page trop grande')
-                    page_text = pytesseract.image_to_string(Image.open(io.BytesIO(pix.tobytes('png'))), lang='fra', timeout=20)
-                text += page_text + '\n'
+            return media, extract_pdf(pdf)
     else:
         image = Image.open(io.BytesIO(data))
         if image.format not in ('JPEG', 'PNG'): raise ValueError('Format non pris en charge')
@@ -372,33 +367,15 @@ async def upload(file: UploadFile = File(...), account: User = Depends(user), se
     digest = hashlib.sha256(data).hexdigest()
     duplicate = session.scalar(select(Document).where(Document.sha256 == digest))
     if duplicate: raise HTTPException(409, 'Fichier identique déjà importé : ' + duplicate.id)
-    text = ''
     try:
-        if data.startswith(b'%PDF-'):
-            media = 'application/pdf'
-            with fitz.open(stream=data, filetype='pdf') as pdf:
-                if pdf.page_count > 20: raise ValueError('Trop de pages')
-                for page in pdf:
-                    page_text = page.get_text()[:100000]
-                    if not page_text.strip():
-                        pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
-                        if pix.width * pix.height > 20_000_000: raise ValueError('Page trop grande')
-                        page_text = pytesseract.image_to_string(Image.open(io.BytesIO(pix.tobytes('png'))), lang='fra', timeout=20)
-                    text += page_text + '\n'
-        else:
-            image = Image.open(io.BytesIO(data))
-            if image.format not in ('JPEG', 'PNG'): raise ValueError('Format non pris en charge')
-            media = 'image/jpeg' if image.format == 'JPEG' else 'image/png'
-            image.verify()
-            image = Image.open(io.BytesIO(data))
-            text = pytesseract.image_to_string(image, lang='fra', timeout=20)
+        media, fields = extract_document(data)
     except (ValueError, RuntimeError, UnidentifiedImageError, OSError, fitz.FileDataError):
         raise HTTPException(400, 'Document illisible, trop volumineux ou traitement impossible')
     doc_id = str(uuid.uuid4())
     path = UPLOAD_DIR / doc_id
     path.write_bytes(data)
     try:
-        doc = Document(id=doc_id, original_name=Path(file.filename or 'document').name[:255], sha256=digest, media_type=media, fields_json=json.dumps(extract(text), ensure_ascii=False))
+        doc = Document(id=doc_id, original_name=Path(file.filename or 'document').name[:255], sha256=digest, media_type=media, fields_json=json.dumps(fields, ensure_ascii=False))
         session.add(doc); audit(session, account.username, 'import_document', doc_id); session.commit()
     except Exception:
         path.unlink(missing_ok=True); raise
