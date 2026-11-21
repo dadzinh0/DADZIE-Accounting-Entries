@@ -1,5 +1,11 @@
 # État du développement — 16 novembre 2026
 
+## 21 novembre 2026 — formulaire d'import unifié
+
+Le formulaire « Importer des documents » utilisait encore `/api/documents`, qui renvoie HTTP 409 sur un hash déjà connu. Ses cinq messages « Fichier identique déjà importé » provenaient de ce chemin, et non du traitement par lots. L'entrée de navigation et le bouton du tableau de bord ouvrent désormais « Traitement par lots » ; l'ancien formulaire a été retiré de l'interface. Les fichiers déjà présents peuvent être soumis dans un nouveau lot : ils sont extraits et signalés avec leur référence d'origine dans les exceptions. Le point d'API historique `/api/documents` garde son comportement 409 pour les clients directs.
+
+Contrôle exécuté dans l'image Docker avec base SQLite temporaire, sans toucher aux volumes PostgreSQL/documents : 13 tests réussis, aucun ignoré. Le test de cinq factures distinctes et les tests de doublons intra/inter-lots ont réussi. Le scan OCR réel et les cinq fichiers précis de l'utilisateur restent à vérifier depuis le navigateur.
+
 ## Correction des doublons et retraitement
 
 L'ancien traitement vérifiait le hash avant l'extraction et associait un doublon au document trouvé, dont les champs pouvaient être vides. Le code n'excluait pas explicitement le document du même identifiant lors d'une reprise. Sans accès aux données de l'utilisateur, il n'est pas possible de déterminer si les cinq fichiers existaient déjà ou pourquoi leurs anciens champs étaient vides.
