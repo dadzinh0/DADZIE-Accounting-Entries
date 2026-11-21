@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Export sans statut d'approbation
+
+À la demande de l'utilisateur, la colonne « État comptable / Non validée » a été retirée du classeur de données de factures et la page de traitement par lots n'affiche plus de consigne d'approbation. L'export reste un relevé des données extraites avec anomalies sur cellules rouges ; il ne génère pas d'écritures comptables. Suite Docker : 19 tests réussis.
+
 ## Noms des lots
 
 Les lots récents sont affichés au format `PHI-INV-B<numéro>-JJ-MM-AAAA`, avec numéro chronologique et date en fuseau Africa/Casablanca. Les identifiants internes restent inchangés. Test de format exécuté avec la suite Docker : 19 tests réussis.

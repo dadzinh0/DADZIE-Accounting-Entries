@@ -9,7 +9,7 @@ from openpyxl.styles import PatternFill
 from batch_report import safe
 
 SHEETS = ('FACTURES', 'LIGNES', 'ANOMALIES')
-INVOICE_HEADERS = ('Fichier', 'Document ID', 'Fournisseur', 'ICE', 'Référence facture', 'Date facture', 'Échéance', 'Devise', 'Total HT', 'TVA', 'Total TTC', 'Contrôle montants', 'État extraction', 'Doublon', 'État comptable')
+INVOICE_HEADERS = ('Fichier', 'Document ID', 'Fournisseur', 'ICE', 'Référence facture', 'Date facture', 'Échéance', 'Devise', 'Total HT', 'TVA', 'Total TTC', 'Contrôle montants', 'État extraction', 'Doublon')
 LINE_HEADERS = ('Document ID', 'Référence facture', 'Description', 'Quantité', 'Prix unitaire', 'Montant HT', 'Origine')
 ISSUE_HEADERS = ('Document ID', 'Fichier', 'Code', 'Sévérité', 'Explication')
 HIGHLIGHTS = {'missing':'F4CCCC', 'warning':'F4CCCC', 'critical':'F4CCCC'}
@@ -69,7 +69,7 @@ def expected_rows(items):
             _date(_field(fields, 'invoice_date')), _date(_field(fields, 'due_date')),
             safe(_field(fields, 'currency')), _amount(_field(fields, 'amount_ht')),
             _amount(_field(fields, 'vat_amount')), _amount(_field(fields, 'amount_ttc')),
-            safe(totals), safe(status), 'Oui' if 'duplicate_file' in codes else 'Non', 'Non validée'))
+            safe(totals), safe(status), 'Oui' if 'duplicate_file' in codes else 'Non'))
         for line in _field(fields, 'lines') or []:
             lines.append((safe(item.get('document_id')), safe(_field(fields, 'invoice_number')),
                 safe(line.get('description')), _amount(line.get('quantity')),

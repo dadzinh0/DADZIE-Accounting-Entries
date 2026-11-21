@@ -68,6 +68,7 @@ TOTAL TTC :1 250,00 MAD'''
         item = {'name':'missing.pdf','document_id':'test-id','status':'review','fields':fields,'totals':'consistent','issues':[{'code':'missing_invoice_number','severity':'critical','explanation':'Référence absente'}]}
         data = build_invoice_workbook([item])
         book = load_workbook(BytesIO(data))
+        self.assertNotIn('État comptable', [cell.value for cell in book['FACTURES'][1]])
         self.assertIsNone(book['FACTURES']['E2'].value)
         self.assertEqual(book['FACTURES']['M2'].value, 'À vérifier')
         self.assertEqual(book['ANOMALIES']['C2'].value, 'missing_invoice_number')
