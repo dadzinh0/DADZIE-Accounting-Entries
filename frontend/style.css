@@ -26,3 +26,17 @@
 .avatar{background:#d9edf4;color:#075f89}
 input:focus,select:focus,button:focus-visible,a:focus-visible{outline:2px solid #efbe2a;outline-offset:2px}
 @media(max-width:900px){.sidebar{width:72px}.sidebar .brand{padding:0 4px 20px}.sidebar .brand-logo{width:48px;height:48px;object-fit:cover;object-position:left center;padding:2px}.sidebar .brand small{display:none}}
+
+/* Transparent logo on a light, high-contrast navigation surface. */
+.sidebar{width:310px;background:#f8fbfe;color:#112a4c;border-right:1px solid #dce8ef}
+.sidebar .brand{padding:10px 8px 27px}
+.brand-logo,.auth .brand-logo{background:transparent;padding:0;box-shadow:none;border-radius:0;image-rendering:auto}
+.sidebar .brand-logo{width:100%;max-width:286px}
+.sidebar .brand small{color:#466880;margin-top:10px}
+.nav button{color:#1a385d;font-weight:600}
+.nav button.active{background:#087eae;color:#fff;box-shadow:inset 4px 0 #efbe2a}
+.nav button:hover:not(:disabled){background:#e4f3fa;color:#075f89}
+.nav button.active:hover{background:#086e9a;color:#fff}
+.nav-label{color:#54728c}
+.sidebar-footer{border-color:#dce8ef;color:#52718b}
+@media(max-width:900px){.sidebar{width:72px}.sidebar .brand-logo{width:48px;height:48px;object-fit:cover;object-position:left center}}

@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Logo transparent haute résolution
+
+Le logo fourni a été nettoyé en image transparente RGBA 2170×725 (`frontend/proheat-logo-clean.png`). La navigation utilise une surface claire afin de garder les lettres marine et bleues lisibles, sans fond blanc intégré à l'image ni superposition de tons sombres. Les boutons restent bleu PROHEAT avec accent doré. Contrôle JavaScript et réponses HTTP du logo, du CSS, du JS et de la page effectués ; pas de test de rendu automatisé du navigateur.
+
 ## Identité visuelle PROHEAT INDUSTRY
 
 Le visuel fourni par l'utilisateur remplace le pictogramme provisoire dans la connexion et la barre latérale. La palette de l'interface suit le logo : marine, bleu/bleu-vert et accent doré ; boutons, navigation, liens, focus et typographie ont été harmonisés. Le logo est stocké localement dans `frontend/proheat-logo.png`. Vérification JavaScript et réponses HTTP des quatre ressources principales effectuées ; aucune capture navigateur automatisée n'a été réalisée.
