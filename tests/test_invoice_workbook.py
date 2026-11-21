@@ -71,6 +71,8 @@ TOTAL TTC :1 250,00 MAD'''
         self.assertIsNone(book['FACTURES']['E2'].value)
         self.assertEqual(book['FACTURES']['M2'].value, 'À vérifier')
         self.assertEqual(book['ANOMALIES']['C2'].value, 'missing_invoice_number')
+        self.assertIn('Référence absente', book['FACTURES']['E2'].comment.text)
+        self.assertEqual(book['FACTURES']['E2'].fill.fgColor.rgb[-6:], 'FFF2CC')
 
     def test_duplicate_still_exports_invoice_fields(self):
         fields = extract(SAMPLE)
@@ -80,8 +82,18 @@ TOTAL TTC :1 250,00 MAD'''
         self.assertEqual(book['FACTURES']['A2'].value, "'=unsafe.pdf")
         self.assertEqual(book['FACTURES']['C2'].value, fields['supplier']['value'])
         self.assertEqual(book['FACTURES']['N2'].value, 'Oui')
+        self.assertIn('Doublon antérieur', book['FACTURES']['N2'].comment.text)
         self.assertEqual(book['FACTURES']['M2'].value, 'Extrait')
         self.assertEqual(book['LIGNES']['C2'].value, 'Câble électrique BT - rouleau')
         with self.assertRaises(ValueError): verify_invoice_workbook(data, ([], [], []))
+
+    def test_incorrect_totals_highlight_amount_cells(self):
+        fields = extract(SAMPLE.replace('1 080,00 MAD', '1 090,00 MAD'))
+        item = {'name':'incorrect.pdf','document_id':'test-id','status':'review','fields':fields,'totals':'inconsistent','issues':[{'code':'totals_inconsistent','severity':'critical','explanation':'HT + TVA ne correspond pas au TTC'}]}
+        book = load_workbook(BytesIO(build_invoice_workbook([item])))
+        for column in ('I','J','K','L'):
+            cell = book['FACTURES'][f'{column}2']
+            self.assertIn('HT + TVA', cell.comment.text)
+            self.assertEqual(cell.fill.fgColor.rgb[-6:], 'F4CCCC')
 
 if __name__ == '__main__': unittest.main()

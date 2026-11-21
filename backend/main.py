@@ -288,7 +288,8 @@ def get_batch(batch_id: str, account: User = Depends(user), session: Session = D
         doc = session.get(Document, item.document_id) if item.document_id else None
         fields = json.loads(doc.fields_json) if doc else {}
         result.append({'id':item.id, 'name':item.name, 'status':item.status, 'document_id':item.document_id, 'supplier':fields.get('supplier', {}).get('value'), 'invoice_number':fields.get('invoice_number', {}).get('value'), 'amount_ht':fields.get('amount_ht', {}).get('value'), 'vat_amount':fields.get('vat_amount', {}).get('value'), 'amount_ttc':fields.get('amount_ttc', {}).get('value'), 'fields':fields, 'totals':validate_totals(fields), 'issues':json.loads(item.issues_json)})
-    return {'id':batch.id, 'items':result, 'total':len(items), 'processed':sum(i.status != 'queued' for i in items), 'review':sum(i.status == 'review' for i in items), 'failed':sum(i.status == 'failed' for i in items), 'validated':0}
+    attention = lambda x: any(issue.get('code') not in ('unverified_rule', 'duplicate_file') for issue in x['issues'])
+    return {'id':batch.id, 'items':result, 'total':len(items), 'processed':sum(i.status != 'queued' for i in items), 'review':sum(i.status == 'review' for i in items), 'failed':sum(i.status == 'failed' for i in items), 'validated':0, 'attention':sum(attention(i) for i in result), 'extracted':sum(i['status'] == 'review' and not attention(i) for i in result)}
 
 @app.get('/api/batches/{batch_id}/exceptions.xlsx')
 def batch_exceptions(batch_id: str, account: User = Depends(user), session: Session = Depends(db)):

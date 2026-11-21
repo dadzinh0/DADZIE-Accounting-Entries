@@ -4,12 +4,42 @@ from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
+from openpyxl.comments import Comment
+from openpyxl.styles import PatternFill
 from batch_report import safe
 
 SHEETS = ('FACTURES', 'LIGNES', 'ANOMALIES')
 INVOICE_HEADERS = ('Fichier', 'Document ID', 'Fournisseur', 'ICE', 'Référence facture', 'Date facture', 'Échéance', 'Devise', 'Total HT', 'TVA', 'Total TTC', 'Contrôle montants', 'État extraction', 'Doublon', 'État comptable')
 LINE_HEADERS = ('Document ID', 'Référence facture', 'Description', 'Quantité', 'Prix unitaire', 'Montant HT', 'Origine')
 ISSUE_HEADERS = ('Document ID', 'Fichier', 'Code', 'Sévérité', 'Explication')
+HIGHLIGHTS = {'missing':'FFF2CC', 'warning':'FCE4D6', 'critical':'F4CCCC'}
+FIELD_COLUMNS = {'supplier':'C', 'ice':'D', 'invoice_number':'E', 'invoice_date':'F',
+    'due_date':'G', 'currency':'H', 'amount_ht':'I', 'vat_amount':'J', 'amount_ttc':'K'}
+
+def _targets(issue):
+    code = issue.get('code', '')
+    if code in ('duplicate_file',): return ('N',), 'warning'
+    if code == 'duplicate_reference': return ('E',), 'warning'
+    if code.startswith('missing_'):
+        return (FIELD_COLUMNS.get(code[8:], 'M'),), 'missing'
+    if code.startswith('totals_'):
+        return ('I', 'J', 'K', 'L'), 'critical'
+    if code == 'unsupported_currency': return ('H',), 'warning'
+    if code in ('processing_failed', 'report_extraction_failed'): return ('A', 'M'), 'critical'
+    if code == 'unverified_rule': return (), 'warning'
+    return ('M',), 'warning'
+
+def _annotate(sheet, items):
+    for row_index, item in enumerate(items, 2):
+        for issue in item.get('issues', []):
+            columns, level = _targets(issue)
+            for column in columns:
+                cell = sheet[f'{column}{row_index}']
+                message = str(issue.get('explanation') or issue.get('code') or 'À vérifier')
+                previous = cell.comment.text + '\n' if cell.comment else ''
+                cell.comment = Comment(previous + message, 'PROHEAT')
+                if level == 'critical' or not cell.fill.patternType:
+                    cell.fill = PatternFill('solid', fgColor=HIGHLIGHTS[level])
 
 def _field(fields, key):
     return (fields.get(key) or {}).get('value')
@@ -61,6 +91,7 @@ def build_invoice_workbook(items):
             for row in sheet.iter_rows(min_row=2):
                 for cell in row[5:7]: cell.number_format = 'dd/mm/yyyy'
                 for cell in row[8:11]: cell.number_format = '#,##0.00'
+            _annotate(sheet, items)
         elif name == 'LIGNES':
             for row in sheet.iter_rows(min_row=2):
                 for cell in row[3:6]: cell.number_format = '#,##0.00'
@@ -68,10 +99,10 @@ def build_invoice_workbook(items):
             letter = column[0].column_letter
             sheet.column_dimensions[letter].width = min(54, max(12, max(len(str(c.value or '')) for c in column) + 2))
     out = BytesIO(); book.save(out); data = out.getvalue()
-    verify_invoice_workbook(data, rows)
+    verify_invoice_workbook(data, rows, items)
     return data
 
-def verify_invoice_workbook(data, rows):
+def verify_invoice_workbook(data, rows, items=None):
     book = load_workbook(BytesIO(data), data_only=False)
     if tuple(book.sheetnames) != SHEETS: raise ValueError('Structure de classeur incorrecte')
     for name, headers, expected in zip(SHEETS, (INVOICE_HEADERS, LINE_HEADERS, ISSUE_HEADERS), rows):
@@ -88,3 +119,12 @@ def verify_invoice_workbook(data, rows):
                 elif (value or '') != (original or ''):
                     raise ValueError('Données différentes après réouverture : ' + name)
         if any(c.data_type == 'f' for row in sheet for c in row): raise ValueError('Formule inattendue')
+    if items is not None:
+        sheet = book['FACTURES']
+        for row_index, item in enumerate(items, 2):
+            for issue in item.get('issues', []):
+                columns, _ = _targets(issue)
+                for column in columns:
+                    cell = sheet[f'{column}{row_index}']
+                    if not cell.comment or not cell.fill.patternType:
+                        raise ValueError('Annotation manquante : ' + cell.coordinate)

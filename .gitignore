@@ -8,5 +8,6 @@ uploads/
 *.db
 *.sqlite*
 *.xlsx
+/outputs/
 *.pdf
 !tests/fixtures/*.pdf

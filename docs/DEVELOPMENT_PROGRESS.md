@@ -1,5 +1,11 @@
 # État du développement — 16 novembre 2026
 
+## 21 novembre 2026 — annotations des anomalies dans Excel
+
+Le fichier de données inclut désormais des commentaires Excel et une couleur sur les cellules concernées : champ obligatoire absent en jaune, montants incohérents en rouge, doublon signalé en orange. Les remarques sur la règle comptable non activée ne sont pas traitées comme une anomalie d'extraction. L'onglet `ANOMALIES` reste une liste compacte des vrais problèmes de données. Le tableau du lot distingue les factures extraites des factures avec anomalies ; la correction par formulaire est facultative. Les données de chaque facture continuent à figurer dans l'Excel, avec les vides conservés et les incohérences non corrigées automatiquement.
+
+Le classeur fictif à cinq factures a été régénéré puis rouvert : commentaires et couleurs vérifiés en `FACTURES!E5` (référence absente) et `FACTURES!I6:K6` (total incohérent), avec 5 factures, 7 lignes et 2 anomalies. Les volumes PostgreSQL et documents sont inchangés.
+
 ## 21 novembre 2026 — export des données de factures
 
 Le besoin utilisateur est un Excel détaillé après import, y compris lorsque des écritures comptables ne sont pas validées. Ajout de `backend/invoice_workbook.py` et de `/api/batches/{id}/invoice-data.xlsx`. Le classeur contient `FACTURES` (une ligne par fichier, champs extraits, contrôle des montants, état d'extraction et indicateur de doublon), `LIGNES` (articles détectés) et `ANOMALIES` (champs absents et incohérences). Les montants sont des cellules numériques et les dates sont typées/formattées. Le fichier est rouvert pour contrôler ses valeurs, le nombre de lignes, ses onglets et l'absence de formules. L'export est disponible même si des exceptions subsistent. Il ne constitue pas un journal comptable validé.
