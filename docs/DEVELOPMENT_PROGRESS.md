@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Interface simplifiée : fichiers vers Excel
+
+L'interface authentifiée se limite maintenant au choix des fichiers, au bouton « Créer mon Excel », à la progression et au téléchargement direct. Les menus, tableau de bord, listes, revue et paramètres ont été retirés de l'interface. La dernière opération reste accessible après rafraîchissement ; les données, historiques et API existants sont conservés. Les problèmes restent indiqués en rouge avec commentaires dans l'Excel.
+
 ## Téléchargement Excel direct
 
 Correction du bouton « Télécharger Excel » de la vue document : il télécharge désormais le classeur du lot associé (ou celui du document pour un import isolé), au lieu de rediriger vers la page d'envoi. La page des lots sélectionne automatiquement le lot le plus récent. Version déployée ; syntaxe JavaScript vérifiée et retour de fichier Excel contrôlé sur une facture fictive existante.

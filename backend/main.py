@@ -319,6 +319,12 @@ def batch_invoice_data(batch_id: str, account: User = Depends(user), session: Se
     audit(session, account.username, 'export_donnees_factures', batch_id); session.commit()
     return Response(content, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition':'attachment; filename="donnees_factures.xlsx"', 'X-Content-Type-Options':'nosniff'})
 
+@app.get('/api/invoice-data.xlsx')
+def latest_invoice_excel(account: User = Depends(user), session: Session = Depends(db)):
+    batch = session.scalar(select(Batch).order_by(Batch.created_at.desc()).limit(1))
+    if not batch: raise HTTPException(404, 'Aucune facture importée dans un lot.')
+    return batch_invoice_data(batch.id, account, session)
+
 @app.get('/api/documents')
 def documents(account: User = Depends(user), session: Session = Depends(db)):
     return [document_dict(d) for d in session.scalars(select(Document).where(Document.status != 'deleted').order_by(Document.created_at.desc())).all()]
