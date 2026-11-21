@@ -378,6 +378,19 @@ def get_file(doc_id: str, account: User = Depends(user), session: Session = Depe
     if not doc: raise HTTPException(404)
     return FileResponse(UPLOAD_DIR / doc.id, media_type=doc.media_type, headers={'Content-Disposition': 'inline', 'X-Content-Type-Options': 'nosniff'})
 
+@app.get('/api/documents/{doc_id}/invoice-data.xlsx')
+def document_excel(doc_id: str, account: User = Depends(user), session: Session = Depends(db)):
+    doc = session.get(Document, doc_id)
+    if not doc: raise HTTPException(404)
+    batch_id = session.scalar(select(BatchItem.batch_id).join(Batch, Batch.id == BatchItem.batch_id).where(BatchItem.document_id == doc_id).order_by(Batch.created_at.desc()).limit(1))
+    if batch_id:
+        return batch_invoice_data(batch_id, account, session)
+    from invoice_workbook import build_invoice_workbook
+    _, fields = extract_document((UPLOAD_DIR / doc.id).read_bytes())
+    content = build_invoice_workbook([{'name':doc.original_name, 'document_id':doc.id, 'status':doc.status, 'fields':fields, 'totals':validate_totals(fields), 'issues':assess(fields)['issues']}])
+    audit(session, account.username, 'export_donnees_factures', doc.id); session.commit()
+    return Response(content, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition':'attachment; filename="donnees_factures.xlsx"'})
+
 class Review(BaseModel):
     fields: dict[str, str | None]
     decision: str = Field(pattern='^(save|reject)$')

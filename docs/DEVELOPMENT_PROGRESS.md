@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Téléchargement Excel direct
+
+Correction du bouton « Télécharger Excel » de la vue document : il télécharge désormais le classeur du lot associé (ou celui du document pour un import isolé), au lieu de rediriger vers la page d'envoi. La page des lots sélectionne automatiquement le lot le plus récent. Version déployée ; syntaxe JavaScript vérifiée et retour de fichier Excel contrôlé sur une facture fictive existante.
+
 ## Suppression de la saisie manuelle des factures
 
 Le formulaire de correction, les champs et les boutons Enregistrer/Rejeter ont été retirés de la vue document. Celle-ci affiche uniquement le document et un accès au téléchargement Excel par lot. Toutes les cellules signalées (valeurs manquantes, doutes, incohérences) utilisent désormais un fond rouge et un commentaire explicatif. Les 18 tests ont réussi dans Docker ; syntaxe JavaScript validée et version déployée localement.
