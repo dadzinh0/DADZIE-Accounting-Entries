@@ -12,7 +12,7 @@ SHEETS = ('FACTURES', 'LIGNES', 'ANOMALIES')
 INVOICE_HEADERS = ('Fichier', 'Document ID', 'Fournisseur', 'ICE', 'Référence facture', 'Date facture', 'Échéance', 'Devise', 'Total HT', 'TVA', 'Total TTC', 'Contrôle montants', 'État extraction', 'Doublon', 'État comptable')
 LINE_HEADERS = ('Document ID', 'Référence facture', 'Description', 'Quantité', 'Prix unitaire', 'Montant HT', 'Origine')
 ISSUE_HEADERS = ('Document ID', 'Fichier', 'Code', 'Sévérité', 'Explication')
-HIGHLIGHTS = {'missing':'FFF2CC', 'warning':'FCE4D6', 'critical':'F4CCCC'}
+HIGHLIGHTS = {'missing':'F4CCCC', 'warning':'F4CCCC', 'critical':'F4CCCC'}
 FIELD_COLUMNS = {'supplier':'C', 'ice':'D', 'invoice_number':'E', 'invoice_date':'F',
     'due_date':'G', 'currency':'H', 'amount_ht':'I', 'vat_amount':'J', 'amount_ttc':'K'}
 

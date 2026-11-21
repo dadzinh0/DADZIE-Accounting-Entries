@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Suppression de la saisie manuelle des factures
+
+Le formulaire de correction, les champs et les boutons Enregistrer/Rejeter ont été retirés de la vue document. Celle-ci affiche uniquement le document et un accès au téléchargement Excel par lot. Toutes les cellules signalées (valeurs manquantes, doutes, incohérences) utilisent désormais un fond rouge et un commentaire explicatif. Les 18 tests ont réussi dans Docker ; syntaxe JavaScript validée et version déployée localement.
+
 ## 21 novembre 2026 — annotations des anomalies dans Excel
 
 Le fichier de données inclut désormais des commentaires Excel et une couleur sur les cellules concernées : champ obligatoire absent en jaune, montants incohérents en rouge, doublon signalé en orange. Les remarques sur la règle comptable non activée ne sont pas traitées comme une anomalie d'extraction. L'onglet `ANOMALIES` reste une liste compacte des vrais problèmes de données. Le tableau du lot distingue les factures extraites des factures avec anomalies ; la correction par formulaire est facultative. Les données de chaque facture continuent à figurer dans l'Excel, avec les vides conservés et les incohérences non corrigées automatiquement.

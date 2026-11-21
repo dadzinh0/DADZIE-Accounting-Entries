@@ -72,7 +72,7 @@ TOTAL TTC :1 250,00 MAD'''
         self.assertEqual(book['FACTURES']['M2'].value, 'À vérifier')
         self.assertEqual(book['ANOMALIES']['C2'].value, 'missing_invoice_number')
         self.assertIn('Référence absente', book['FACTURES']['E2'].comment.text)
-        self.assertEqual(book['FACTURES']['E2'].fill.fgColor.rgb[-6:], 'FFF2CC')
+        self.assertEqual(book['FACTURES']['E2'].fill.fgColor.rgb[-6:], 'F4CCCC')
 
     def test_duplicate_still_exports_invoice_fields(self):
         fields = extract(SAMPLE)
