@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Bouton de suppression des lots
+
+Un bouton « Supprimer ce lot » est affiché pour les lots terminés. Il masque le lot de la liste via une nouvelle table additive `hidden_batches`, avec confirmation et événement d'audit. Aucun fichier ni historique n'est effacé ; les lots en attente de traitement ne peuvent pas être masqués.
+
 ## Restauration de l'interface complète
 
 À la demande de l'utilisateur, restauration des fichiers frontend de la version précédant la simplification (8fde5f1). Navigation, tableau de bord, documents, traitement par lots et téléchargement Excel sont rétablis. Le point de téléchargement direct du dernier lot est conservé. Aucune donnée ou volume supprimé.

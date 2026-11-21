@@ -75,6 +75,10 @@ class BatchItem(Base):
     document_id: Mapped[str | None] = mapped_column(ForeignKey('documents.id'), nullable=True)
     issues_json: Mapped[str] = mapped_column(Text, default='[]')
 
+class HiddenBatch(Base):
+    __tablename__ = 'hidden_batches'
+    batch_id: Mapped[str] = mapped_column(ForeignKey('batches.id'), primary_key=True)
+
 import json
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(SessionMiddleware, secret_key=SECRET, same_site='strict', https_only=False, max_age=8*3600, session_cookie='proheat_session')
@@ -255,7 +259,19 @@ async def create_batch(files: list[UploadFile] = File(...), account: User = Depe
 
 @app.get('/api/batches')
 def list_batches(account: User = Depends(user), session: Session = Depends(db)):
-    return [{'id': b.id, 'created_at': b.created_at.isoformat()} for b in session.scalars(select(Batch).order_by(Batch.created_at.desc()).limit(100))]
+    return [{'id': b.id, 'created_at': b.created_at.isoformat()} for b in session.scalars(select(Batch).where(~Batch.id.in_(select(HiddenBatch.batch_id))).order_by(Batch.created_at.desc()).limit(100))]
+
+@app.delete('/api/batches/{batch_id}')
+def hide_batch(batch_id: str, account: User = Depends(user), session: Session = Depends(db)):
+    if account.role != 'admin': raise HTTPException(403)
+    if not session.get(Batch, batch_id): raise HTTPException(404)
+    if session.get(HiddenBatch, batch_id): return {'ok': True}
+    pending = session.scalar(select(func.count()).select_from(BatchItem).where(BatchItem.batch_id == batch_id, BatchItem.status == 'queued'))
+    if pending: raise HTTPException(409, 'Attendez la fin du traitement.')
+    session.add(HiddenBatch(batch_id=batch_id))
+    audit(session, account.username, 'masquage_lot', batch_id)
+    session.commit()
+    return {'ok': True}
 
 @app.post('/api/batches/{batch_id}/reprocess')
 def reprocess_batch(batch_id: str, account: User = Depends(user), session: Session = Depends(db)):
