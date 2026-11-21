@@ -103,3 +103,10 @@ input:not([type=file]),select{background:#f9fbfc;border-color:#bdcdd8}
 .auth{background:#dfe7ee}
 .auth .card{background:#f7f9fb}
 @media(max-width:900px){.sidebar .brand{margin:0 2px 8px;padding:12px 3px 18px}.sidebar .brand-logo{width:48px;height:48px;padding:4px}}
+
+/* White brand header only; the navigation below stays navy. */
+.sidebar .brand{margin:0 0 18px;padding:26px 23px 19px;background:#fff;border:0;border-bottom:3px solid #e5b52a}
+.sidebar .brand-logo{width:100%;max-width:264px;height:auto;background:transparent;padding:0;border-radius:0;box-shadow:none}
+.sidebar .brand small{margin:12px 0 0;color:#3a5870;font-weight:600;letter-spacing:.025em}
+.sidebar .nav-label{margin-top:8px}
+@media(max-width:900px){.sidebar .brand{margin:0 0 14px;padding:11px 9px 13px}.sidebar .brand-logo{width:48px;height:48px;object-fit:cover;object-position:left center;padding:0}}

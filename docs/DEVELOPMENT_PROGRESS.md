@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## En-tête du logo
+
+Le logo occupe désormais toute la zone supérieure blanche de la barre latérale, sans carte blanche flottante. Un fin séparateur doré marque la transition vers le menu marine, qui conserve sa couleur et ses états actifs. Vérification HTTP du CSS servi localement effectuée.
+
 ## Palette moins lumineuse
 
 La navigation reprend un fond marine sombre ; seul le panneau du logo a un fond blanc pour préserver sa lisibilité. Le fond principal, la barre supérieure, les cartes, tableaux et contrôles utilisent des tons ardoise plus sombres et moins éblouissants. Le CSS versionné est servi par l'application locale ; contrôle HTTP effectué. Pas de capture navigateur automatisée disponible dans cette session.
