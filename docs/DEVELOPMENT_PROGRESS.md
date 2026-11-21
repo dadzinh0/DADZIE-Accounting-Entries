@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Identité visuelle PROHEAT INDUSTRY
+
+Le visuel fourni par l'utilisateur remplace le pictogramme provisoire dans la connexion et la barre latérale. La palette de l'interface suit le logo : marine, bleu/bleu-vert et accent doré ; boutons, navigation, liens, focus et typographie ont été harmonisés. Le logo est stocké localement dans `frontend/proheat-logo.png`. Vérification JavaScript et réponses HTTP des quatre ressources principales effectuées ; aucune capture navigateur automatisée n'a été réalisée.
+
 ## Navigation limitée à cinq onglets
 
 La barre latérale affiche uniquement Tableau de bord, Traitement par lots, Référentiel réglementaire, Journal d'audit et Paramètres. L'import et l'export restent accessibles dans le flux de traitement par lots. Vérification syntaxique JavaScript et réponse HTTP du script déployé effectuées.
