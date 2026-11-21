@@ -5,6 +5,7 @@ import secrets
 import uuid
 import threading
 import time
+from zoneinfo import ZoneInfo
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -259,7 +260,15 @@ async def create_batch(files: list[UploadFile] = File(...), account: User = Depe
 
 @app.get('/api/batches')
 def list_batches(account: User = Depends(user), session: Session = Depends(db)):
-    return [{'id': b.id, 'created_at': b.created_at.isoformat()} for b in session.scalars(select(Batch).where(~Batch.id.in_(select(HiddenBatch.batch_id))).order_by(Batch.created_at.desc()).limit(100))]
+    batches = session.scalars(select(Batch).order_by(Batch.created_at, Batch.id)).all()
+    hidden = set(session.scalars(select(HiddenBatch.batch_id)).all())
+    return [{'id': b.id, 'name': batch_name(b, number), 'created_at': b.created_at.isoformat()}
+            for number, b in reversed(list(enumerate(batches, 1))) if b.id not in hidden][:100]
+
+def batch_name(batch, number):
+    when = batch.created_at
+    if when.tzinfo is None: when = when.replace(tzinfo=timezone.utc)
+    return f"PHI-INV-B{number}-{when.astimezone(ZoneInfo('Africa/Casablanca')):%d-%m-%Y}"
 
 @app.delete('/api/batches/{batch_id}')
 def hide_batch(batch_id: str, account: User = Depends(user), session: Session = Depends(db)):
@@ -305,7 +314,8 @@ def get_batch(batch_id: str, account: User = Depends(user), session: Session = D
         fields = json.loads(doc.fields_json) if doc else {}
         result.append({'id':item.id, 'name':item.name, 'status':item.status, 'document_id':item.document_id, 'supplier':fields.get('supplier', {}).get('value'), 'invoice_number':fields.get('invoice_number', {}).get('value'), 'amount_ht':fields.get('amount_ht', {}).get('value'), 'vat_amount':fields.get('vat_amount', {}).get('value'), 'amount_ttc':fields.get('amount_ttc', {}).get('value'), 'fields':fields, 'totals':validate_totals(fields), 'issues':json.loads(item.issues_json)})
     attention = lambda x: any(issue.get('code') not in ('unverified_rule', 'duplicate_file') for issue in x['issues'])
-    return {'id':batch.id, 'items':result, 'total':len(items), 'processed':sum(i.status != 'queued' for i in items), 'review':sum(i.status == 'review' for i in items), 'failed':sum(i.status == 'failed' for i in items), 'validated':0, 'attention':sum(attention(i) for i in result), 'extracted':sum(i['status'] == 'review' and not attention(i) for i in result)}
+    number = session.scalar(select(func.count()).select_from(Batch).where((Batch.created_at < batch.created_at) | ((Batch.created_at == batch.created_at) & (Batch.id <= batch.id))))
+    return {'id':batch.id, 'name':batch_name(batch, number), 'items':result, 'total':len(items), 'processed':sum(i.status != 'queued' for i in items), 'review':sum(i.status == 'review' for i in items), 'failed':sum(i.status == 'failed' for i in items), 'validated':0, 'attention':sum(attention(i) for i in result), 'extracted':sum(i['status'] == 'review' and not attention(i) for i in result)}
 
 @app.get('/api/batches/{batch_id}/exceptions.xlsx')
 def batch_exceptions(batch_id: str, account: User = Depends(user), session: Session = Depends(db)):

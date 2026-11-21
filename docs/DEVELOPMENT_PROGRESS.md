@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Noms des lots
+
+Les lots récents sont affichés au format `PHI-INV-B<numéro>-JJ-MM-AAAA`, avec numéro chronologique et date en fuseau Africa/Casablanca. Les identifiants internes restent inchangés. Test de format exécuté avec la suite Docker : 19 tests réussis.
+
 ## Bouton de suppression des lots
 
 Un bouton « Supprimer ce lot » est affiché pour les lots terminés. Il masque le lot de la liste via une nouvelle table additive `hidden_batches`, avec confirmation et événement d'audit. Aucun fichier ni historique n'est effacé ; les lots en attente de traitement ne peuvent pas être masqués.
