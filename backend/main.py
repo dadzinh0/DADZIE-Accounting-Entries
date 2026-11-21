@@ -22,8 +22,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, String, Text, DateTime, ForeignKey, select, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 from starlette.middleware.sessions import SessionMiddleware
-from extraction import extract, validate_totals
+from extraction import extract, derive_missing_totals, validate_totals
 from layout_extraction import extract_pdf
+from ollama_extraction import enrich_missing_fields
 from batch_validation import assess
 
 DATABASE_URL = os.environ['DATABASE_URL']
@@ -171,7 +172,7 @@ def extract_document(data):
         media = 'application/pdf'
         with fitz.open(stream=data, filetype='pdf') as pdf:
             if pdf.page_count > 20: raise ValueError('Trop de pages')
-            return media, extract_pdf(pdf)
+            fields, text = extract_pdf(pdf, include_text=True)
     else:
         image = Image.open(io.BytesIO(data))
         if image.format not in ('JPEG', 'PNG'): raise ValueError('Format non pris en charge')
@@ -179,7 +180,9 @@ def extract_document(data):
         image.verify()
         image = Image.open(io.BytesIO(data))
         text = pytesseract.image_to_string(image, lang='fra', timeout=20)
-    return media, extract(text)
+        fields = extract(text)
+    fields = derive_missing_totals(fields, text)
+    return media, enrich_missing_fields(fields, text)
 
 def process_batch_item(item_id):
     with Session(engine) as session:

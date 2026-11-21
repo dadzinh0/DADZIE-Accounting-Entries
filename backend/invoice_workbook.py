@@ -26,6 +26,10 @@ def _targets(issue):
         return ('I', 'J', 'K', 'L'), 'critical'
     if code == 'unsupported_currency': return ('H',), 'warning'
     if code == 'uncertain_supplier': return ('C',), 'warning'
+    if code == 'model_suggestion_review':
+        return tuple(FIELD_COLUMNS[key] for key in issue.get('fields', []) if key in FIELD_COLUMNS) or ('M',), 'warning'
+    if code == 'calculated_total_review':
+        return tuple(FIELD_COLUMNS[key] for key in issue.get('fields', []) if key in FIELD_COLUMNS) or ('M',), 'warning'
     if code in ('processing_failed', 'report_extraction_failed'): return ('A', 'M'), 'critical'
     if code == 'unverified_rule': return (), 'warning'
     return ('M',), 'warning'

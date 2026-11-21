@@ -4,13 +4,21 @@ from extraction import validate_totals
 
 def assess(fields, known_references=()):
     issues = []
-    def issue(code, message):
-        issues.append({'code': code, 'severity': 'critical', 'explanation': message})
+    def issue(code, message, severity='critical', **details):
+        issues.append({'code': code, 'severity': severity, 'explanation': message, **details})
     def value(key):
         item = fields.get(key) or {}
         return str(item.get('value') or '').strip()
     for key in ('supplier', 'invoice_number', 'invoice_date', 'currency', 'amount_ht', 'vat_amount', 'amount_ttc'):
         if not value(key): issue('missing_' + key, 'Champ obligatoire absent : ' + key)
+    suggested = [key for key, field in fields.items() if isinstance(field, dict) and field.get('origin') == 'qwen_suggested']
+    if suggested:
+        issue('model_suggestion_review', 'Valeur(s) proposée(s) par Qwen : vérification humaine requise.',
+              severity='warning', fields=suggested)
+    calculated = [key for key, field in fields.items() if isinstance(field, dict) and field.get('origin') == 'calculated']
+    if calculated:
+        issue('calculated_total_review', 'Total(s) calculé(s) depuis un taux de TVA explicite : vérifier sur la facture.',
+              severity='warning', fields=calculated)
     if (fields.get('supplier') or {}).get('origin') == 'ocr_uncertain':
         issue('uncertain_supplier', 'Nom du fournisseur lu dans le logo par OCR : vérifier l’orthographe.')
     totals = validate_totals(fields)

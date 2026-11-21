@@ -19,6 +19,9 @@ services:
       DATABASE_URL: postgresql+psycopg://proheat:${POSTGRES_PASSWORD}@db:5432/proheat
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
       UPLOAD_DIR: /data/uploads
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3-vl:4b}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-120}
     ports:
       - "127.0.0.1:8081:8080"
     volumes:

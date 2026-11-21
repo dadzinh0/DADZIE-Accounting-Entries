@@ -128,3 +128,19 @@ Le traitement PDF commun aux imports directs et par lots conserve maintenant les
 Le PDF réel fourni par l'utilisateur a servi uniquement de vérification locale ; il n'est ni copié dans le dépôt ni ajouté aux tests. Sur cet exemple, 17 lignes ont été extraites, leur somme HT correspond au total HT et les montants HT + TVA = TTC. L'OCR du logo laisse une orthographe incertaine dans le nom du fournisseur : cette valeur est à vérifier dans Excel. Un PDF seul ne constitue pas un entraînement universel ; les autres mises en page et scans nécessitent encore des essais et des tests avec des factures fictives. L'extraction ne garantit pas tous les champs de toutes les factures.
 
 Tests : 20 tests unitaires réussis dans l'image Docker existante. Le test synthétique couvre logo OCR, deux ICE, date courte et totaux disposés en colonnes. Les volumes PostgreSQL et documents ne sont pas modifiés par ces tests.
+
+## 21 novembre 2026 — fallback local Ollama/Qwen
+
+Ajout d'un fallback facultatif via l'API locale Ollama pour proposer les champs absents après extraction déterministe. Le backend envoie uniquement le texte natif PDF/OCR, demande une réponse JSON contrainte, conserve seulement les suggestions dont la citation figure dans le texte source et n'écrase jamais un champ déjà extrait. Les valeurs Qwen déclenchent une anomalie « vérification humaine requise » et sont repérées dans le classeur. Ollama est désactivé tant que `OLLAMA_BASE_URL` reste vide. Une panne ou un délai dépassé conserve le parcours sans IA.
+
+Limite : malgré le modèle vision-langage, cette première intégration n'envoie pas d'images au modèle ; elle ne corrige donc pas une mauvaise lecture OCR ni un texte source vide, et ne garantit pas la détection de chaque facture. La connexion de Docker Desktop à Ollama sur macOS et le traitement avec le modèle ne sont pas vérifiés dans cette session. Aucun test n'a été exécuté pour cette modification. L'API Ollama n'offre pas d'authentification : l'exposer sur toutes les interfaces peut ouvrir l'accès au modèle et aux textes à d'autres appareils du réseau.
+
+## 21 novembre 2026 — correction de deux scans de factures
+
+Après inspection visuelle et OCR local des deux PDF signalés, l'extraction des scans utilise désormais Tesseract `--psm 6`, accepte les montants à deux ou trois décimales, lit les totaux lorsqu'ils apparaissent après d'autres libellés, et évite de prendre « N° Client » pour le numéro de facture. Le fournisseur est recherché dans un pied de page émetteur explicite ou un logo isolé ; les valeurs OCR restent signalées pour revue. Une règle CSS permet aux anomalies longues de revenir à la ligne.
+
+Retraitement dans un nouveau lot : la facture GROUPELEC a produit la référence `FA125356`, HT 17 300,000, TVA 3 460,000 et TTC 20 760,000 ; la facture ESCA a produit la référence `21858`, HT 55 000,00, TVA 11 000,00 et TTC 66 000,00. L'arithmétique est cohérente pour les deux. Le lot corrigé signale encore les doublons attendus, puisque les mêmes fichiers existaient déjà, et les noms fournisseur OCR restent à vérifier. Les anciens documents/lots n'ont pas été écrasés. Cette vérification sur ces deux documents ne garantit pas les autres formats ; aucune suite de tests n'a été exécutée.
+
+## 21 novembre 2026 — calcul conservateur des totaux manquants
+
+Si le TTC est extrait et le texte contient un seul taux TVA explicite, le backend peut calculer HT/TVA manquants avec `Decimal`, arrondi `ROUND_HALF_UP` à 2 ou 3 décimales selon la précision du TTC. Il vérifie que les deux valeurs se recomposent exactement au TTC et que le calcul respecte le taux affiché. Aucune valeur n'est déduite lorsque le taux est absent ou multiple. Les champs portent l'origine `calculated`, et une anomalie de revue humaine est ajoutée au lot et au classeur. Ce calcul ne prouve pas que l'émetteur n'a appliqué aucun autre frais ou régime ; le résultat ne doit pas être traité comme une écriture comptable validée.

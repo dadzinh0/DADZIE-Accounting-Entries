@@ -9,7 +9,7 @@ import fitz
 
 from extraction import extract
 
-MONEY = re.compile(r'\d[\d\s\u00a0]*[,.]\d{2}')
+MONEY = re.compile(r'\d[\d\s\u00a0]*[,.]\d{2,3}')
 DATE = re.compile(r'\b(\d{2})[/-](\d{2})[/-](\d{2}|\d{4})\b')
 
 def _put(fields, key, value, evidence, origin='extracted'):
@@ -65,14 +65,14 @@ def _table_lines(page, rows):
                           'amount_ht': t, 'origin': 'extracted'})
     return lines
 
-def extract_pdf(pdf):
+def extract_pdf(pdf, include_text=False):
     text_parts = []
     for page in pdf:
         page_text = page.get_text()[:100000]
         if not page_text.strip():
             pix = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
             if pix.width * pix.height > 20_000_000: raise ValueError('Page trop grande')
-            page_text = pytesseract.image_to_string(Image.open(io.BytesIO(pix.tobytes('png'))), lang='fra', timeout=20)
+            page_text = pytesseract.image_to_string(Image.open(io.BytesIO(pix.tobytes('png'))), lang='fra', config='--psm 6', timeout=20)
         text_parts.append(page_text)
     text = '\n'.join(text_parts)
     fields = extract(text)
@@ -83,7 +83,9 @@ def extract_pdf(pdf):
         issuer_ice = re.search(r'(?is)\bRC\s*N[°o]?\s*:.*?\bICE\s*:\s*([0-9]{15})', text)
         if issuer_ice:
             fields['ice'] = {'value': issuer_ice.group(1), 'origin': 'extracted', 'evidence': issuer_ice.group(0)[-75:]}
-    number = re.search(r'(?i)\b(?:facture|invoice)\s*(?:n[°o]|num(?:é|e)ro|number|#)\s*:?\s*([A-Z0-9][A-Z0-9/-]{3,})', text)
+    number = re.search(r'(?i)\b(?:facture|invoice)\s*(?:n[°o]|num(?:é|e)ro|number|#)\s*:?\s*(?=[A-Z0-9/-]*\d)([A-Z0-9][A-Z0-9/-]{2,})', text)
+    if not number:
+        number = re.search(r'(?im)^\s*FACTURE\s*[|:]\s*(?=[A-Z0-9/-]*\d)([A-Z0-9][A-Z0-9/-]{2,})', text)
     if number: _put(fields, 'invoice_number', number.group(1), number.group(0))
     if 'invoice_date' not in fields:
         for line in text.splitlines()[:40]:
@@ -97,27 +99,38 @@ def extract_pdf(pdf):
                 break
     if re.search(r'\b(?:Dhs|MAD|Dirhams?)\b', text, re.I):
         _put(fields, 'currency', 'MAD', 'Devise indiquée en Dhs/MAD')
-    # The buyer often occupies the first selectable-text block. OCR the image
-    # header independently, even on PDFs with an otherwise complete text layer.
+    # Prefer an issuer footer, then an isolated top-left logo image. Avoid
+    # guessing from full-page OCR: it often identifies the buyer or a legal footer.
     if 'supplier' not in fields and pdf.page_count:
         page = pdf[0]
-        header = ''
+        issuer = re.search(r'(?im)^\s*([A-Z][A-Z0-9& .\'-]{2,60}?)\s*,\s*Si[èe]ge\s+social\b', text)
+        if issuer:
+            _put(fields, 'supplier', issuer.group(1).strip(), issuer.group(0).strip(), 'ocr_uncertain')
+        logo_supplier = None
         for image_info in page.get_images(full=True):
+            rects = page.get_image_rects(image_info[0])
+            if not rects:
+                continue
+            rect = rects[0]
+            if (rect.y1 > page.rect.height * .22 or rect.x0 > page.rect.width * .5
+                    or rect.width > page.rect.width * .55 or rect.width * rect.height < 500):
+                continue
             image_data = pdf.extract_image(image_info[0])['image']
             image = Image.open(io.BytesIO(image_data))
-            if image.width < 300 or image.height < 80 or image.width * image.height > 20_000_000: continue
-            header += pytesseract.image_to_string(image, lang='fra', config='--psm 3', timeout=20) + '\n'
-        if not header:
-            clip = fitz.Rect(0, 0, page.rect.width, min(155, page.rect.height * .22))
-            pix = page.get_pixmap(matrix=fitz.Matrix(4, 4), clip=clip, alpha=False)
-            if pix.width * pix.height <= 20_000_000:
-                header = pytesseract.image_to_string(Image.open(io.BytesIO(pix.tobytes('png'))), lang='fra', config='--psm 3', timeout=20)
-        if header:
-            for line in header.splitlines():
-                candidate = line.strip(' |—-*')
-                if re.search(r'(?i)\b(?:compagnie|société|societe|entreprise|company|sarl|s\.a\.)\b', candidate) and len(candidate) >= 12:
-                    _put(fields, 'supplier', candidate, 'OCR du logo : ' + candidate, 'ocr_uncertain')
+            if image.width < 100 or image.width * image.height > 20_000_000:
+                continue
+            logo_text = pytesseract.image_to_string(image, lang='fra', config='--psm 6', timeout=20)
+            for line in logo_text.splitlines():
+                candidate = line.strip(' |—-*').strip()
+                candidate = re.sub(r"^[C][’'](?=[A-Z])", '', candidate)
+                if (len(re.sub(r'[^A-Za-zÀ-ÿ]', '', candidate)) >= 4
+                        and not re.search(r'(?i)\b(?:facture|client|page|proheat\s+industry)\b', candidate)):
+                    logo_supplier = candidate
                     break
+            if logo_supplier:
+                break
+        if 'supplier' not in fields and logo_supplier:
+            _put(fields, 'supplier', logo_supplier, 'OCR du logo : ' + logo_supplier, 'ocr_uncertain')
     # Read totals from aligned rows. This avoids confusing line-item prices
     # with invoice totals when PDF text order is column-major.
     for page in pdf:
@@ -147,4 +160,4 @@ def extract_pdf(pdf):
                         right_of_label = [c for c in candidates if c[1] > words[0][0] + 40]
                         _, _, value = min(right_of_label or candidates, key=lambda c: (c[1], c[0]))
                     _put(fields, key, value, label + ' / ' + value)
-    return fields
+    return (fields, text) if include_text else fields

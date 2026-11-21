@@ -118,3 +118,6 @@ input:not([type=file]),select{background:#f9fbfc;border-color:#bdcdd8}
 .sidebar .nav-label{margin:8px 28px 10px}
 .sidebar .sidebar-footer{margin: auto 16px 20px;padding:18px 10px 0}
 @media(max-width:900px){.sidebar{padding:0}.sidebar .brand{width:100%;margin:0 0 15px;padding:12px}.sidebar .nav{padding:0 8px}.sidebar .nav-label{display:none}}
+
+/* Keep long batch anomaly explanations readable inside the table viewport. */
+.table-wrap td:last-child{white-space:normal;overflow-wrap:anywhere;min-width:190px}

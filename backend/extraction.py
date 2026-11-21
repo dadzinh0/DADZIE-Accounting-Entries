@@ -1,17 +1,18 @@
 """Conservative local extraction. Unmatched values are never fabricated."""
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 def extract(text):
+    money = r'([\d \u00a0]+[,.]\d{2,3})'
     patterns = {
         'supplier': r'(?im)^\s*(?:fournisseur|supplier)\s*:\s*(.+)$',
-        'invoice_number': r'(?im)^[ \t]*(?:facture[ \t]*(?:n[°o]|numéro)|invoice[ \t]*(?:no|number))(?:[ \t]*[:#][ \t]*|[ \t]+)([^\s:#\r\n][^\r\n]*)$',
+        'invoice_number': r'(?im)^[ \t]*(?:facture[ \t]*(?:n[°o]|numéro)|invoice[ \t]*(?:no|number))(?:[ \t]*[:#][ \t]*|[ \t]+)(?=[^\r\n]*\d)([A-Z0-9][A-Z0-9/-]*)',
         'invoice_date': r'(?im)^\s*(?:date(?: de facture)?)\s*:\s*(\d{2}[/-]\d{2}[/-]\d{4})',
         'ice': r'(?im)^\s*ICE\s*:\s*([0-9]{15})',
         'currency': r'(?im)^\s*(?:devise|currency)\s*:\s*(MAD|EUR|USD)\b',
-        'amount_ht': r'(?im)^\s*(?:total\s*)?HT\s*:\s*([\d ]+[,.]\d{2})',
-        'vat_amount': r'(?im)^\s*(?:montant\s*)?TVA\s*:\s*([\d ]+[,.]\d{2})',
-        'amount_ttc': r'(?im)^\s*(?:total\s*)?TTC\s*:\s*([\d ]+[,.]\d{2})',
+        'amount_ht': r'(?im)^\s*(?:total\s*)?H\.?\s*T\.?\s*:?\s*' + money,
+        'vat_amount': r'(?im)^\s*(?:montant\s*)?TVA(?:\s+\d+(?:[,.]\d+)?\s*%)?\s*:?\s*' + money,
+        'amount_ttc': r'(?im)^\s*(?:(?:total\s*)?TTC|net\s+[àa]\s+payer)\s*:?\s*' + money,
     }
     result = {}
     for name, pattern in patterns.items():
@@ -19,13 +20,13 @@ def extract(text):
         if match:
             value = match.group(1).strip()
             if name in ('amount_ht', 'vat_amount', 'amount_ttc'):
-                value = value.replace(' ', '').replace(',', '.')
+                value = value.replace(' ', '').replace('\u00a0', '').replace(',', '.')
             result[name] = {'value': value, 'origin': 'extracted', 'evidence': match.group(0).strip()}
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     def put(name, value, evidence):
         if value and name not in result:
             result[name] = {'value': value, 'origin': 'extracted', 'evidence': evidence}
-    money = r'(\d[\d\s]*[,.]\d{2})'
+    money = r'(\d[\d\s\u00a0]*[,.]\d{2,3})'
     for index, line in enumerate(lines):
         following = lines[index + 1] if index + 1 < len(lines) else ''
         if re.fullmatch(r'FOURNISSEUR\s*\(FICTIF\)', line, re.I):
@@ -48,12 +49,28 @@ def extract(text):
             dates = [candidate for candidate in lines[index + 2:index + 5] if re.fullmatch(r'\d{2}/\d{2}/\d{4}', candidate)]
             if dates: put('invoice_date', dates[0], line + ' / ' + dates[0])
             if len(dates) > 1: put('due_date', dates[1], lines[index + 1] + ' / ' + dates[1])
-        for name, label in (('amount_ht', r'Total\s+HT'), ('vat_amount', r'TVA(?:\s*\([^)]*\))?'), ('amount_ttc', r'TOTAL\s+TTC')):
-            match = re.match(r'^' + label + r'\s*:?[ \t]*' + money, line, re.I)
-            if match: put(name, match.group(1).replace(' ', '').replace(',', '.'), line)
-            elif re.fullmatch(label + r'\s*:', line, re.I):
-                match = re.match(money, following)
-                if match: put(name, match.group(1).replace(' ', '').replace(',', '.'), line + ' / ' + following)
+        for name, label in (('amount_ht', r'(?:Total\s+H\.?\s*T\.?|H\.?\s*T\.?\s*:)'), ('vat_amount', r'TVA(?:\s+\d+(?:[,.]\d+)?\s*%|\s*\([^)]*\))?'), ('amount_ttc', r'(?:TOTAL\s+TTC|NET\s+[àa]\s+PAYER)')):
+            if re.search(r'(?i)\b(?:DÉSIGNATION|QUANTITÉ|PRIX\s+U)\b', line):
+                continue
+            match = re.search(label + r'\s*:?[ \t]*' + money, line, re.I)
+            if match: put(name, match.group(1).replace(' ', '').replace('\u00a0', '').replace(',', '.'), line)
+        if 'amount_ttc' not in result and re.search(r'NET\s+[àa]\s+PAYER', line, re.I):
+            for candidate in lines[index + 1:index + 5]:
+                if re.search(r'\b(?:HT|TVA|BASES?)\b', candidate, re.I):
+                    continue
+                match = re.fullmatch(r'\s*' + money + r'\s*', candidate, re.I)
+                if match:
+                    put('amount_ttc', match.group(1).replace(' ', '').replace('\u00a0', '').replace(',', '.'), line + ' / ' + candidate)
+                    break
+        if 'amount_ttc' not in result and re.search(r'(?i)arr[êe]t[ée]e?\b.*\bsomme\s+de', line):
+            for candidate in [line] + lines[index + 1:index + 4]:
+                if re.search(r'(?i)\b(?:TVA|TOTAL\s+HT|H\.?\s*T\.?)\b', candidate):
+                    continue
+                amounts = list(re.finditer(money, candidate))
+                if amounts:
+                    chosen = amounts[-1].group(1).replace(' ', '').replace('\u00a0', '').replace(',', '.')
+                    put('amount_ttc', chosen, line + ' / ' + candidate)
+                    break
         if 'MAD' in line.upper() and ('PU (' in line.upper() or 'TOTAL' in line.upper()):
             put('currency', 'MAD', line)
         if re.match(r'^DÉSIGNATION$', line, re.I) and index + 3 < len(lines):
@@ -74,6 +91,76 @@ def extract(text):
                         result['lines'] = {'value':[{'description':description, 'quantity':numeric.group(1), 'unit_price':numeric.group(2).replace(' ', '').replace(',', '.'), 'amount_ht':numeric.group(3).replace(' ', '').replace(',', '.'), 'origin':'extracted'}], 'origin':'extracted', 'evidence':description + ' / ' + candidate}
                         break
     return result
+
+def derive_missing_totals(fields, source_text):
+    """Derive missing HT/VAT only from a TTC and one explicit invoice VAT rate."""
+    rate_matches = re.findall(
+        r'(?i)\bTVA\s*(?:\(?\s*)(\d{1,2}(?:[,.]\d+)?)\s*%',
+        source_text or '',
+    )
+    rates = set()
+    for raw_rate in rate_matches:
+        try:
+            rate = Decimal(raw_rate.replace(',', '.'))
+        except InvalidOperation:
+            continue
+        if rate.is_finite() and Decimal('0') <= rate <= Decimal('100'):
+            rates.add(rate)
+    if len(rates) != 1:
+        return fields
+
+    ttc_field = fields.get('amount_ttc') or {}
+    try:
+        ttc = Decimal(str(ttc_field.get('value')))
+        if not ttc.is_finite() or ttc < 0:
+            return fields
+    except (InvalidOperation, TypeError):
+        return fields
+
+    ht_field = fields.get('amount_ht') or {}
+    vat_field = fields.get('vat_amount') or {}
+    ht_exists = bool(ht_field.get('value'))
+    vat_exists = bool(vat_field.get('value'))
+    if ht_exists and vat_exists:
+        return fields
+
+    rate = next(iter(rates)) / Decimal('100')
+    decimals = [len(str(field.get('value')).partition('.')[2])
+                for field in (ttc_field, ht_field, vat_field)
+                if field.get('value') and '.' in str(field.get('value'))]
+    precision = max(2, min(3, max(decimals, default=2)))
+    quantum = Decimal('1').scaleb(-precision)
+    evidence = 'Calcul depuis Total TTC et le taux de TVA explicite (' + str(next(iter(rates))) + '%)'
+
+    try:
+        if not ht_exists and not vat_exists:
+            ht = (ttc / (Decimal('1') + rate)).quantize(quantum, rounding=ROUND_HALF_UP)
+            vat = ttc - ht
+        elif ht_exists:
+            ht = Decimal(str(ht_field['value']))
+            vat = ttc - ht
+        else:
+            vat = Decimal(str(vat_field['value']))
+            ht = ttc - vat
+        expected_vat = (ht * rate).quantize(quantum, rounding=ROUND_HALF_UP)
+        if ht < 0 or vat < 0 or vat != expected_vat or ht + vat != ttc:
+            return fields
+    except (InvalidOperation, KeyError, TypeError, ValueError):
+        return fields
+
+    if not ht_exists:
+        fields['amount_ht'] = {
+            'value': format(ht, f'.{precision}f'),
+            'origin': 'calculated',
+            'evidence': evidence,
+        }
+    if not vat_exists:
+        fields['vat_amount'] = {
+            'value': format(vat, f'.{precision}f'),
+            'origin': 'calculated',
+            'evidence': evidence,
+        }
+    return fields
 
 def validate_totals(fields):
     try:
