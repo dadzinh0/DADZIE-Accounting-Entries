@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Restauration de l'interface complète
+
+À la demande de l'utilisateur, restauration des fichiers frontend de la version précédant la simplification (8fde5f1). Navigation, tableau de bord, documents, traitement par lots et téléchargement Excel sont rétablis. Le point de téléchargement direct du dernier lot est conservé. Aucune donnée ou volume supprimé.
+
 ## Interface simplifiée : fichiers vers Excel
 
 L'interface authentifiée se limite maintenant au choix des fichiers, au bouton « Créer mon Excel », à la progression et au téléchargement direct. Les menus, tableau de bord, listes, revue et paramètres ont été retirés de l'interface. La dernière opération reste accessible après rafraîchissement ; les données, historiques et API existants sont conservés. Les problèmes restent indiqués en rouge avec commentaires dans l'Excel.
