@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Présentation affinée
+
+La page d'accueil n'affiche plus de bannière « Version de développement » ni de consignes de test ; les notices comparables ont été retirées du traitement par lots, de la vue document et du référentiel. Le tableau de bord présente des compteurs de documents et de lots. Les anciens liens bleus sont présentés comme des contrôles sobres et cohérents ; boutons, tableaux, formulaires et surfaces ont été harmonisés. Contrôle syntaxique JavaScript et réponses HTTP de la page, du script et du CSS effectués. Aucun navigateur automatisé n'était disponible pour une capture visuelle.
+
 ## Logo transparent haute résolution
 
 Le logo fourni a été nettoyé en image transparente RGBA 2170×725 (`frontend/proheat-logo-clean.png`). La navigation utilise une surface claire afin de garder les lettres marine et bleues lisibles, sans fond blanc intégré à l'image ni superposition de tons sombres. Les boutons restent bleu PROHEAT avec accent doré. Contrôle JavaScript et réponses HTTP du logo, du CSS, du JS et de la page effectués ; pas de test de rendu automatisé du navigateur.
