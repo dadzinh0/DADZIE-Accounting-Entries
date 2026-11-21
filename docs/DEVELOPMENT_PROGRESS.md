@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Navigation limitée à cinq onglets
+
+La barre latérale affiche uniquement Tableau de bord, Traitement par lots, Référentiel réglementaire, Journal d'audit et Paramètres. L'import et l'export restent accessibles dans le flux de traitement par lots. Vérification syntaxique JavaScript et réponse HTTP du script déployé effectuées.
+
 ## Export sans statut d'approbation
 
 À la demande de l'utilisateur, la colonne « État comptable / Non validée » a été retirée du classeur de données de factures et la page de traitement par lots n'affiche plus de consigne d'approbation. L'export reste un relevé des données extraites avec anomalies sur cellules rouges ; il ne génère pas d'écritures comptables. Suite Docker : 19 tests réussis.
