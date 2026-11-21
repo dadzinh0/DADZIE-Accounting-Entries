@@ -1,5 +1,9 @@
 # État du développement — 16 novembre 2026
 
+## Palette moins lumineuse
+
+La navigation reprend un fond marine sombre ; seul le panneau du logo a un fond blanc pour préserver sa lisibilité. Le fond principal, la barre supérieure, les cartes, tableaux et contrôles utilisent des tons ardoise plus sombres et moins éblouissants. Le CSS versionné est servi par l'application locale ; contrôle HTTP effectué. Pas de capture navigateur automatisée disponible dans cette session.
+
 ## Présentation affinée
 
 La page d'accueil n'affiche plus de bannière « Version de développement » ni de consignes de test ; les notices comparables ont été retirées du traitement par lots, de la vue document et du référentiel. Le tableau de bord présente des compteurs de documents et de lots. Les anciens liens bleus sont présentés comme des contrôles sobres et cohérents ; boutons, tableaux, formulaires et surfaces ont été harmonisés. Contrôle syntaxique JavaScript et réponses HTTP de la page, du script et du CSS effectués. Aucun navigateur automatisé n'était disponible pour une capture visuelle.

@@ -74,3 +74,32 @@ progress{accent-color:#087eae}
 a{color:#24516d}
 a:hover{color:#163d59}
 @media(max-width:600px){.stats{grid-template-columns:1fr}.table-wrap td:last-child{white-space:normal}.button,button.link,a.link{min-height:40px}}
+
+/* Lower-glare PROHEAT palette. The logo alone sits on white. */
+:root{color:#18314a;background:#e8edf2}
+body,.main{background:#e8edf2}
+.sidebar{background:#102a48;color:#dbe9f1;border-right:1px solid #244765}
+.sidebar .brand{margin:0 10px 12px;padding:18px 10px 22px;border-bottom:1px solid #35516b}
+.sidebar .brand-logo{display:block;width:100%;max-width:none;background:#fff;padding:11px 9px;border-radius:10px;box-shadow:0 6px 15px #071b3440}
+.sidebar .brand small{color:#b7ccdc;margin:12px 4px 0}
+.nav-label{color:#9db8ca}
+.nav button{color:#d7e7f0}
+.nav button:hover:not(:disabled){background:#1a3c5c;color:#fff}
+.nav button.active{background:#08769f;color:#fff;box-shadow:inset 4px 0 #e9ba2c}
+.nav button.active:hover{background:#0b638a;color:#fff}
+.topbar{background:#eef2f5;border-bottom:1px solid #cdd9e2;color:#405d75}
+.card{background:#f7f9fb;border-color:#d1dde6;box-shadow:0 3px 13px #183f5b13}
+.panel-head{border-bottom-color:#dce5ec}
+.stat{border-top-color:#14769e}
+th{background:#edf2f6;color:#566f83}
+td,th{border-bottom-color:#dce5eb}
+td{color:#304b60}
+.button{background:#0c6085;border-color:#0c6085;box-shadow:0 2px 5px #071e3030}
+.button:hover:not(:disabled),a.button:hover{background:#084c6c;border-color:#084c6c}
+.button.secondary,.link,button.link,a.link{background:#edf3f6;border-color:#c4d4df;color:#214762}
+.button.secondary:hover:not(:disabled),.link:hover,button.link:hover,a.link:hover{background:#dfeaf0;border-color:#9db9c9;color:#123b56}
+.link-danger,button.link-danger{background:#f7ebeb;border-color:#dfc4c6;color:#8c3940}
+input:not([type=file]),select{background:#f9fbfc;border-color:#bdcdd8}
+.auth{background:#dfe7ee}
+.auth .card{background:#f7f9fb}
+@media(max-width:900px){.sidebar .brand{margin:0 2px 8px;padding:12px 3px 18px}.sidebar .brand-logo{width:48px;height:48px;padding:4px}}
