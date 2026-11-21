@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: proheat
+      POSTGRES_USER: proheat
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U proheat -d proheat"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [internal]
+  app:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://proheat:${POSTGRES_PASSWORD}@db:5432/proheat
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      UPLOAD_DIR: /data/uploads
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - documents:/data/uploads
+      - ./frontend:/app/frontend:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal]
+    init: true
+    mem_limit: 1g
+    cpus: 2
+networks:
+  internal:
+    driver: bridge
+volumes:
+  database:
+  documents:

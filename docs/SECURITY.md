@@ -1,0 +1,7 @@
+# Modèle de sécurité initial
+
+Actifs : documents, données extraites, identifiants, journaux et sauvegardes. Menaces : accès local non autorisé, fichiers malveillants, vol de session, fuite par journalisation ou réseau, erreur comptable et perte des volumes. Limites actuelles : l'hôte et Docker sont réputés de confiance ; aucun chiffrement au repos n'est fourni par l'application ; les liens externes sont facultatifs et ouverts par l'utilisateur.
+
+Mesures codées mais non entièrement testées : mots de passe Argon2, session signée SameSite strict et expiration, port lié à 127.0.0.1, réseau Docker interne, noms aléatoires, contrôle de contenu et de taille, limite de pages et délai Tesseract, aucune journalisation intentionnelle du contenu. L'application est exécutée par un utilisateur non privilégié. La vérification MIME s'appuie sur le contenu reconnu, pas sur le nom.
+
+Avant toute donnée réelle : évaluer les risques des fichiers PDF/images non fiables (isolation, limites CPU/mémoire/temps et tests de charge), ajout d'une protection CSRF et contre DNS rebinding, limitation des connexions, gestion révocable des sessions et des rôles, contrôle concurrentiel de la création initiale, permissions et chiffrement des volumes et sauvegardes, sauvegarde/restauration testée, conservation et suppression, audit complet et immuable, revue indépendante et validation CNDP/professionnelle. L'application ne garantit ni confidentialité absolue ni conformité juridique.
