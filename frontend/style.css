@@ -110,3 +110,11 @@ input:not([type=file]),select{background:#f9fbfc;border-color:#bdcdd8}
 .sidebar .brand small{margin:12px 0 0;color:#3a5870;font-weight:600;letter-spacing:.025em}
 .sidebar .nav-label{margin-top:8px}
 @media(max-width:900px){.sidebar .brand{margin:0 0 14px;padding:11px 9px 13px}.sidebar .brand-logo{width:48px;height:48px;object-fit:cover;object-position:left center;padding:0}}
+
+/* Edge-to-edge white header; padding belongs to the menu, not the sidebar. */
+.sidebar{padding:0}
+.sidebar .brand{width:100%;margin:0 0 20px;padding:25px 22px 20px}
+.sidebar .nav{padding:0 16px}
+.sidebar .nav-label{margin:8px 28px 10px}
+.sidebar .sidebar-footer{margin: auto 16px 20px;padding:18px 10px 0}
+@media(max-width:900px){.sidebar{padding:0}.sidebar .brand{width:100%;margin:0 0 15px;padding:12px}.sidebar .nav{padding:0 8px}.sidebar .nav-label{display:none}}
