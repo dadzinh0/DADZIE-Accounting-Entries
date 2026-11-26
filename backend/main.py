@@ -12,7 +12,7 @@ from pathlib import Path
 
 import fitz
 import pytesseract
-from PIL import Image, UnidentifiedImageError
+from PIL import ImageOps, Image, UnidentifiedImageError
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
 from fastapi import FastAPI, Request, UploadFile, File, HTTPException, Depends
@@ -173,16 +173,28 @@ def extract_document(data):
         with fitz.open(stream=data, filetype='pdf') as pdf:
             if pdf.page_count > 20: raise ValueError('Trop de pages')
             fields, text = extract_pdf(pdf, include_text=True)
+            def render_pages():
+                for index in sorted({0, pdf.page_count - 1}):
+                    page = pdf[index]
+                    scale = min(2, 1500 / max(page.rect.width, page.rect.height))
+                    yield page.get_pixmap(matrix=fitz.Matrix(scale, scale), colorspace=fitz.csRGB).tobytes('jpeg')
+            fields = enrich_missing_fields(derive_missing_totals(fields, text), text, render_pages)
     else:
-        image = Image.open(io.BytesIO(data))
-        if image.format not in ('JPEG', 'PNG'): raise ValueError('Format non pris en charge')
-        media = 'image/jpeg' if image.format == 'JPEG' else 'image/png'
-        image.verify()
-        image = Image.open(io.BytesIO(data))
-        text = pytesseract.image_to_string(image, lang='fra', timeout=20)
-        fields = extract(text)
-    fields = derive_missing_totals(fields, text)
-    return media, enrich_missing_fields(fields, text)
+        with Image.open(io.BytesIO(data)) as original:
+            if original.format not in ('JPEG', 'PNG', 'WEBP', 'BMP'):
+                raise ValueError('Format non pris en charge')
+            if original.width * original.height > 20_000_000:
+                raise ValueError('Image trop grande')
+            media = Image.MIME[original.format]
+            image = ImageOps.exif_transpose(original).convert('RGB')
+        text = pytesseract.image_to_string(image, lang='fra+eng', timeout=20)
+        def render_pages():
+            image.thumbnail((1500, 1500))
+            buffer = io.BytesIO()
+            image.save(buffer, format='JPEG')
+            return [buffer.getvalue()]
+        fields = enrich_missing_fields(derive_missing_totals(extract(text), text), text, render_pages)
+    return media, derive_missing_totals(fields, text)
 
 def process_batch_item(item_id):
     with Session(engine) as session:

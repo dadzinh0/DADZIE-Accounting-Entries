@@ -2,17 +2,25 @@
 import re
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+MONEY = r'(?<![\d.,])(-?(?:\d{1,3}(?:[., \u00a0\u202f]\d{3})+|\d+)[.,]\d{2,3})(?![\d.,])'
+
+
+def normalize_amount(raw):
+    whole, fraction = re.split(r'[.,](?=\d{2,3}$)', raw.strip())
+    return re.sub(r'[.,\s]', '', whole) + '.' + fraction
+
+
 def extract(text):
-    money = r'([\d \u00a0]+[,.]\d{2,3})'
+    money = MONEY
     patterns = {
         'supplier': r'(?im)^\s*(?:fournisseur|supplier)\s*:\s*(.+)$',
         'invoice_number': r'(?im)^[ \t]*(?:facture[ \t]*(?:n[°o]|numéro)|invoice[ \t]*(?:no|number))(?:[ \t]*[:#][ \t]*|[ \t]+)(?=[^\r\n]*\d)([A-Z0-9][A-Z0-9/-]*)',
         'invoice_date': r'(?im)^\s*(?:date(?: de facture)?)\s*:\s*(\d{2}[/-]\d{2}[/-]\d{4})',
         'ice': r'(?im)^\s*ICE\s*:\s*([0-9]{15})',
         'currency': r'(?im)^\s*(?:devise|currency)\s*:\s*(MAD|EUR|USD)\b',
-        'amount_ht': r'(?im)^\s*(?:total\s*)?H\.?\s*T\.?\s*:?\s*' + money,
-        'vat_amount': r'(?im)^\s*(?:montant\s*)?TVA(?:\s+\d+(?:[,.]\d+)?\s*%)?\s*:?\s*' + money,
-        'amount_ttc': r'(?im)^\s*(?:(?:total\s*)?TTC|net\s+[àa]\s+payer)\s*:?\s*' + money,
+        'amount_ht': r'(?im)^\s*(?:(?:total\s*)?H\.?\s*T\.?|subtotal)\s*:?\s*' + money,
+        'vat_amount': r'(?im)^\s*(?:montant\s*)?(?:TVA|VAT)(?:\s*\(?\s*\d+(?:[,.]\d+)?\s*%\s*\)?)?\s*:?\s*' + money,
+        'amount_ttc': r'(?im)^\s*(?:(?:total\s*)?TTC|grand total|net\s+[àa]\s+payer)\s*:?\s*' + money,
     }
     result = {}
     for name, pattern in patterns.items():
@@ -20,13 +28,13 @@ def extract(text):
         if match:
             value = match.group(1).strip()
             if name in ('amount_ht', 'vat_amount', 'amount_ttc'):
-                value = value.replace(' ', '').replace('\u00a0', '').replace(',', '.')
+                value = normalize_amount(value)
             result[name] = {'value': value, 'origin': 'extracted', 'evidence': match.group(0).strip()}
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     def put(name, value, evidence):
         if value and name not in result:
             result[name] = {'value': value, 'origin': 'extracted', 'evidence': evidence}
-    money = r'(\d[\d\s\u00a0]*[,.]\d{2,3})'
+    money = MONEY
     for index, line in enumerate(lines):
         following = lines[index + 1] if index + 1 < len(lines) else ''
         if re.fullmatch(r'FOURNISSEUR\s*\(FICTIF\)', line, re.I):
@@ -53,14 +61,14 @@ def extract(text):
             if re.search(r'(?i)\b(?:DÉSIGNATION|QUANTITÉ|PRIX\s+U)\b', line):
                 continue
             match = re.search(label + r'\s*:?[ \t]*' + money, line, re.I)
-            if match: put(name, match.group(1).replace(' ', '').replace('\u00a0', '').replace(',', '.'), line)
+            if match: put(name, normalize_amount(match.group(1)), line)
         if 'amount_ttc' not in result and re.search(r'NET\s+[àa]\s+PAYER', line, re.I):
             for candidate in lines[index + 1:index + 5]:
                 if re.search(r'\b(?:HT|TVA|BASES?)\b', candidate, re.I):
                     continue
                 match = re.fullmatch(r'\s*' + money + r'\s*', candidate, re.I)
                 if match:
-                    put('amount_ttc', match.group(1).replace(' ', '').replace('\u00a0', '').replace(',', '.'), line + ' / ' + candidate)
+                    put('amount_ttc', normalize_amount(match.group(1)), line + ' / ' + candidate)
                     break
         if 'amount_ttc' not in result and re.search(r'(?i)arr[êe]t[ée]e?\b.*\bsomme\s+de', line):
             for candidate in [line] + lines[index + 1:index + 4]:
@@ -68,7 +76,7 @@ def extract(text):
                     continue
                 amounts = list(re.finditer(money, candidate))
                 if amounts:
-                    chosen = amounts[-1].group(1).replace(' ', '').replace('\u00a0', '').replace(',', '.')
+                    chosen = normalize_amount(amounts[-1].group(1))
                     put('amount_ttc', chosen, line + ' / ' + candidate)
                     break
         if 'MAD' in line.upper() and ('PU (' in line.upper() or 'TOTAL' in line.upper()):

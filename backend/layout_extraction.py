@@ -1,15 +1,16 @@
 """Position-aware PDF extraction. Values remain tied to visible text or OCR."""
 import re
 from datetime import datetime
+from decimal import Decimal
 
 import pytesseract
 from PIL import Image
 import io
 import fitz
 
-from extraction import extract
+from extraction import extract, MONEY as MONEY_PATTERN, normalize_amount
 
-MONEY = re.compile(r'\d[\d\s\u00a0]*[,.]\d{2,3}')
+MONEY = re.compile(MONEY_PATTERN)
 DATE = re.compile(r'\b(\d{2})[/-](\d{2})[/-](\d{2}|\d{4})\b')
 
 def _put(fields, key, value, evidence, origin='extracted'):
@@ -18,7 +19,7 @@ def _put(fields, key, value, evidence, origin='extracted'):
 
 def _amount(text):
     match = MONEY.search(text)
-    return match.group().replace(' ', '').replace('\u00a0', '').replace(',', '.') if match else None
+    return normalize_amount(match.group()) if match else None
 
 def _rows(page):
     words = sorted(page.get_text('words'), key=lambda w: (round(w[1] / 3), w[0]))
@@ -69,10 +70,14 @@ def extract_pdf(pdf, include_text=False):
     text_parts = []
     for page in pdf:
         page_text = page.get_text()[:100000]
-        if not page_text.strip():
-            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
+        if not page_text.strip() or (len(page_text.split()) < 30 and any(
+                fitz.Rect(info['bbox']).get_area() > page.rect.get_area() * .45
+                for info in page.get_image_info())):
+            scale = min(2, 2500 / max(page.rect.width, page.rect.height))
+            pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
             if pix.width * pix.height > 20_000_000: raise ValueError('Page trop grande')
-            page_text = pytesseract.image_to_string(Image.open(io.BytesIO(pix.tobytes('png'))), lang='fra', config='--psm 6', timeout=20)
+            scanned = pytesseract.image_to_string(Image.open(io.BytesIO(pix.tobytes('png'))), lang='fra+eng', config='--psm 6', timeout=20)
+            page_text = scanned.strip() or page_text
         text_parts.append(page_text)
     text = '\n'.join(text_parts)
     fields = extract(text)
@@ -119,7 +124,7 @@ def extract_pdf(pdf, include_text=False):
             image = Image.open(io.BytesIO(image_data))
             if image.width < 100 or image.width * image.height > 20_000_000:
                 continue
-            logo_text = pytesseract.image_to_string(image, lang='fra', config='--psm 6', timeout=20)
+            logo_text = pytesseract.image_to_string(image, lang='fra+eng', config='--psm 6', timeout=20)
             for line in logo_text.splitlines():
                 candidate = line.strip(' |—-*').strip()
                 candidate = re.sub(r"^[C][’'](?=[A-Z])", '', candidate)
@@ -129,6 +134,12 @@ def extract_pdf(pdf, include_text=False):
                     break
             if logo_supplier:
                 break
+        if 'supplier' not in fields and not logo_supplier and not page.get_images() and page.get_text().strip():
+            header = fitz.Rect(0, 0, min(300, page.rect.width / 2), min(120, page.rect.height / 6))
+            pix = page.get_pixmap(clip=header, matrix=fitz.Matrix(2, 2))
+            header_text = pytesseract.image_to_string(Image.open(io.BytesIO(pix.tobytes('png'))), lang='fra+eng', timeout=20).strip()
+            if re.fullmatch(r"[^\W\d_][^\d\n:]{3,65}", header_text) and not re.search(r'facture|invoice|client|adresse', header_text, re.I):
+                logo_supplier = header_text
         if 'supplier' not in fields and logo_supplier:
             _put(fields, 'supplier', logo_supplier, 'OCR du logo : ' + logo_supplier, 'ocr_uncertain')
     # Read totals from aligned rows. This avoids confusing line-item prices
@@ -160,4 +171,21 @@ def extract_pdf(pdf, include_text=False):
                         right_of_label = [c for c in candidates if c[1] > words[0][0] + 40]
                         _, _, value = min(right_of_label or candidates, key=lambda c: (c[1], c[0]))
                     _put(fields, key, value, label + ' / ' + value)
+        # A PDF may list tax and payable columns in arbitrary text order.
+        # Correct a conflicting TTC only with a printed, aligned, balancing value.
+        if all(key in fields for key in ('amount_ht', 'vat_amount', 'amount_ttc')):
+            expected = Decimal(fields['amount_ht']['value']) + Decimal(fields['vat_amount']['value'])
+            if expected != Decimal(fields['amount_ttc']['value']):
+                for y, words in rows:
+                    for j, word in enumerate(words):
+                        heading = ' '.join(w[4] for w in words[j:j+3])
+                        if not re.match(r'(?i)^(?:net [àa] payer|total TTC)\b', heading):
+                            continue
+                        for yy, nearby in rows:
+                            if not y < yy <= y + 48:
+                                continue
+                            column = ' '.join(w[4] for w in nearby if word[0]-8 <= w[0] <= word[0]+65)
+                            if MONEY.fullmatch(column) and Decimal(normalize_amount(column)) == expected:
+                                fields['amount_ttc'] = {'value': normalize_amount(column), 'origin': 'extracted',
+                                                        'evidence': heading + ' / ' + column}
     return (fields, text) if include_text else fields

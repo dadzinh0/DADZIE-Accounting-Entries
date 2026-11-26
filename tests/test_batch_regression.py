@@ -23,21 +23,32 @@ class BatchRegression(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
+        environment = patch.dict(os.environ)
+        environment.start()
+        cls.addClassCleanup(environment.stop)
         os.environ['DATABASE_URL'] = 'sqlite:///' + (Path(cls.temp.name) / 'test.db').as_posix()
         os.environ['SESSION_SECRET'] = 'test-secret-' * 4
         os.environ['UPLOAD_DIR'] = cls.temp.name
         os.environ['FRONTEND_DIR'] = os.getenv('TEST_FRONTEND_DIR', str(Path(__file__).resolve().parents[1] / 'frontend'))
         import main
         cls.main = main
-        main.Base.metadata.create_all(main.engine)
+        cls.test_engine = sqlalchemy.create_engine('sqlite:///' + (Path(cls.temp.name) / 'test.db').as_posix())
+        cls.engine_patch = patch.object(main, 'engine', cls.test_engine)
+        cls.upload_patch = patch.object(main, 'UPLOAD_DIR', Path(cls.temp.name))
+        cls.engine_patch.start()
+        cls.upload_patch.start()
 
     @classmethod
     def tearDownClass(cls):
-        cls.main.engine.dispose(); cls.temp.cleanup()
+        cls.upload_patch.stop()
+        cls.engine_patch.stop()
+        cls.test_engine.dispose()
+        cls.temp.cleanup()
 
     def setUp(self):
-        m = self.main
-        m.Base.metadata.drop_all(m.engine); m.Base.metadata.create_all(m.engine)
+        self.assertEqual(self.main.engine.dialect.name, 'sqlite')
+        self.main.Base.metadata.drop_all(self.test_engine)
+        self.main.Base.metadata.create_all(self.test_engine)
 
     def add_batch(self, texts):
         m = self.main; batch = str(uuid.uuid4()); ids = []
